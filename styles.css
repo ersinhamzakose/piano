@@ -1,0 +1,79 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background-color: #222;
+}
+
+#piano {
+    clip-path: inset(15px 0px 0px 0px);
+    margin-top: -15px;
+    position: relative;
+    z-index: 100;
+}
+
+.white-key {
+    stroke: #555555;
+    fill: #FFFFF7;
+    z-index: 101;
+}
+
+.white-key:hover {
+    fill: #ddd;
+    cursor: pointer;
+}
+
+.black-key {
+    stroke: #979797;
+    fill: #4b4b4b;
+}
+
+.black-key:hover {
+    fill: #6c6b6b;
+    cursor: pointer;
+}
+
+.white-key.show {
+    fill: #cce;
+    transform: skew(-0.25deg,-0.25deg);
+    transition: fill 0.1s;
+    z-index: 100;
+}
+
+.white-key-text {
+    font-size: 1.3em;
+    pointer-events: none;
+    user-select: none;
+}
+
+.black-key-text {
+    font-size: 1em;
+    fill: #fff;
+    font-weight: 200;
+    pointer-events: none;
+    user-select: none;
+}
+
+.black-key.show {
+    fill: #669;
+    transform: skew(-0.25deg,-0.25deg);
+    transition: fill 0.1s;
+}
+
+.show.black-key~text {
+    fill: #000;
+}
+
+#notes-container {
+    flex-grow: 1;
+    position: relative;
+    overflow: hidden;
+    background-color: #222;
+}
