@@ -15,6 +15,7 @@ let allNaturalNotes = [];
 let keyPositions = {};
 let currentTime = 0;
 let lastFrameTime = 0;
+let flameParticles = [];
 
 const pi = new Tone.Sampler(filename, {
     curve: "exponential",
@@ -36,6 +37,8 @@ const app = {
 
         this.createNotesCanvas();
         this.setupPiano();
+        this.createFlameCanvas();
+        this.startFlameAnimation();
 
         document.addEventListener('mouseup', () => {
             isMouseDown = false;
@@ -54,6 +57,102 @@ const app = {
         notesCanvas.style.background = "#222";
 
         document.body.insertBefore(notesCanvas, document.getElementById('piano'));
+    },
+
+    createFlameCanvas() {
+        const flameCanvas = document.createElement('canvas');
+        flameCanvas.id = "flame-canvas";
+        flameCanvas.width = window.innerWidth;
+        flameCanvas.height = 150;
+        flameCanvas.style.position = "absolute";
+        flameCanvas.style.bottom = "0";
+        flameCanvas.style.left = "0";
+        flameCanvas.style.zIndex = "50";
+        flameCanvas.style.pointerEvents = "none";
+        
+        document.getElementById('notes-container').appendChild(flameCanvas);
+    },
+
+    startFlameAnimation() {
+        const canvas = document.getElementById('flame-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Create fewer initial flame particles
+        const maxParticles = 50; // Significantly reduced from original
+        
+        // Initialize with fewer particles
+        for (let i = 0; i < maxParticles; i++) {
+            this.createFlameParticle(Math.random() * pianoWidth);
+        }
+        
+        const animateFlame = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw and update flame particles
+            for (let i = flameParticles.length - 1; i >= 0; i--) {
+                const particle = flameParticles[i];
+                
+                // Simpler particle update
+                particle.y -= particle.speed;
+                particle.life -= 1;
+                
+                // Simple circle instead of gradient for better performance
+                ctx.beginPath();
+                ctx.fillStyle = `rgba(255, 255, 255, ${particle.life / 100})`;
+                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Remove dead particles
+                if (particle.life <= 0) {
+                    flameParticles.splice(i, 1);
+                    // Create new particle at a random position
+                    if (flameParticles.length < maxParticles) {
+                        this.createFlameParticle(Math.random() * pianoWidth);
+                    }
+                }
+            }
+            
+            // Use throttled animation frame for better performance
+            setTimeout(() => {
+                requestAnimationFrame(animateFlame);
+            }, 1000/30); // Cap at 30fps
+        };
+        
+        animateFlame();
+    },
+
+    createFlameParticle(x, isKeyPress = false) {
+        if (isKeyPress && flameParticles.length > 100) return;
+        
+        const baseY = isKeyPress ? pianoHeight - 20 : 150;
+        const particle = {
+            x: x,
+            y: baseY,
+            size: isKeyPress ? 5 : 2,
+            speed: 2,
+            life: isKeyPress ? 50 : 40
+        };
+        
+        flameParticles.push(particle);
+        
+        if (isKeyPress) {
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    if (flameParticles.length < 150) {
+                        const spreadX = x + (Math.random() * 10 - 5);
+                        this.createFlameParticle(spreadX, false);
+                    }
+                }, i * 50);
+            }
+        }
+    },
+
+    createKeyPressFlame(noteName) {
+        if (keyPositions[noteName]) {
+            const keyPos = keyPositions[noteName];
+            const x = keyPos.x + keyPos.width / 2;
+            this.createFlameParticle(x, true);
+        }
     },
 
     setupPiano() {
@@ -90,11 +189,13 @@ const app = {
             whiteKey.addEventListener("mousedown", () => {
                 isMouseDown = true;
                 utils.playNote(noteName);
+                this.createKeyPressFlame(noteName);
             });
 
             whiteKey.addEventListener("mouseover", () => {
                 if (isMouseDown) {
                     utils.playNote(noteName);
+                    this.createKeyPressFlame(noteName);
                 }
             });
 
@@ -145,11 +246,13 @@ const app = {
                     blackKey.addEventListener("mousedown", () => {
                         isMouseDown = true;
                         utils.playNote(noteSharp);
+                        this.createKeyPressFlame(noteSharp);
                     });
 
                     blackKey.addEventListener("mouseover", () => {
                         if (isMouseDown) {
                             utils.playNote(noteSharp);
+                            this.createKeyPressFlame(noteSharp);
                         }
                     });
 
@@ -196,6 +299,23 @@ const app = {
             }
             SVG.appendChild(blackKeyTextGroup);
         });
+
+        // Add CSS for glowing effects
+        const style = document.createElement('style');
+        style.textContent = `
+            .white-key, .black-key {
+                transition: filter 0.2s;
+            }
+            .white-key.show {
+                fill: #fff;
+                filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
+            }
+            .black-key.show {
+                fill: #000;
+                filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
+            }
+        `;
+        document.head.appendChild(style);
 
         piano.appendChild(SVG);
     },
@@ -255,7 +375,10 @@ const app = {
                     const noteDuration = (note.duration / 1000) + "s";
                     utils.playNote(noteName, noteDuration);
                     note.isPlaying = true;
-                
+
+                    // Create flame effect for auto-played notes
+                    app.createKeyPressFlame(noteName);
+
                     const keyElement = document.querySelector(`[data-note-name="${noteName}"], [data-sharp-name="${noteName}"], [data-flat-name="${noteName}"]`);
                     if (keyElement) {
                         keyElement.classList.add("show");
@@ -361,6 +484,7 @@ const app = {
 
                 if (naturalName === noteName || sharpName === noteName || flatName === noteName) {
                     key.classList.add("show");
+                    app.createKeyPressFlame(noteName);
                 }
             });
         });
